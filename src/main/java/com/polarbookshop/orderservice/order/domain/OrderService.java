@@ -31,7 +31,7 @@ public class OrderService {
 
 	private Order buildAcceptedOrder(final Book book, final Integer quantity) {
 		return Order.of(book.isbn(), String.format("%s - %s", book.title(), book.author()),
-				book.price(), quantity, OrderStatus.REJECTED);
+				book.price(), quantity, OrderStatus.ACCEPTED);
 	}
 
 	private Order buildRejectedOrder(final String bookIsbn, final Integer quantity) {

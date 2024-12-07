@@ -24,6 +24,7 @@ public class BookClient {
 				.get()
 				.uri(BOOKS_ROOT_API + isbn)
 				.retrieve()
-				.bodyToMono(Book.class);
+				.bodyToMono(Book.class)
+				.timeout(Duration.ofSeconds(3));
 	}
 }
