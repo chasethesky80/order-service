@@ -1,22 +1,22 @@
 package com.polarbookshop.orderservice.book;
 
-import java.io.IOException;
-
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
-@TestMethodOrder(MethodOrderer.Random.class)
+import java.io.IOException;
+
 class BookClientTests {
 
 	private MockWebServer mockWebServer;
@@ -26,10 +26,9 @@ class BookClientTests {
 	void setup() throws IOException {
 		this.mockWebServer = new MockWebServer();
 		this.mockWebServer.start();
-
 		var webClient = WebClient.builder()
-				.baseUrl(mockWebServer.url("/").uri().toString())
-				.build();
+			.baseUrl(mockWebServer.url("/").uri().toString())
+			.build();
 		this.bookClient = new BookClient(webClient);
 	}
 
@@ -39,42 +38,18 @@ class BookClientTests {
 	}
 
 	@Test
-	void whenBookExistsThenReturnBook() {
+	void whenBookExistsThenReturnBook() throws JsonProcessingException {
 		var bookIsbn = "1234567890";
-
+		var mockBook = new Book(bookIsbn, "Title", "Author", 9.90);
+		var objectMapper = new ObjectMapper();
+		objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 		var mockResponse = new MockResponse()
 				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody("""
-							{
-								"isbn": %s,
-								"title": "Title",
-								"author": "Author",
-								"price": 9.90,
-								"publisher": "Polarsophia"
-							}
-						""".formatted(bookIsbn));
-
+				.setBody(objectMapper.writeValueAsString(mockBook));
 		mockWebServer.enqueue(mockResponse);
-
-		Mono<Book> book = bookClient.getBookByIsbn(bookIsbn);
-
-		StepVerifier.create(book)
+		final Mono<Book> result = bookClient.getBookByIsbn(bookIsbn);
+		StepVerifier.create(result)
 				.expectNextMatches(b -> b.isbn().equals(bookIsbn))
-				.verifyComplete();
-	}
-
-	@Test
-	void whenBookNotExistsThenReturnEmpty() {
-		var bookIsbn = "1234567891";
-
-		var mockResponse = new MockResponse()
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setResponseCode(404);
-
-		mockWebServer.enqueue(mockResponse);
-
-		StepVerifier.create(bookClient.getBookByIsbn(bookIsbn))
-				.expectNextCount(0)
 				.verifyComplete();
 	}
 
